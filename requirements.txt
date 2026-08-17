@@ -1,0 +1,10 @@
+backports-datetime-fromisoformat==2.0.3
+certifi==2026.6.17
+charset-normalizer==3.4.9
+environs==15.0.1
+idna==3.18
+marshmallow==4.3.0
+python-dotenv==1.2.2
+requests==2.34.2
+typing_extensions==4.16.0
+urllib3==2.7.0
