@@ -1,7 +1,15 @@
 ## Initial Readme File
 
-This accesses one or more webMethods (wM) archive zip files on a local file system where the script runs, although we are more used to deploying files using the wM Administrator ui from the replicate/inbound directory on the host integration server.
+### Note
 
-Most of the webMethods api detail for the main process was provided through a Safari Google search for help writing a Python process to interact with a webMethods integration server, primarily for this exact process, to import packages following some kind of a more automated process than using the standard wM Administrator ui. We added argparse for some command-line arguments and environs for following a more standard practice of using a separate file for user accounts and passwords as well as some standard constants like the server name, port, and others.
+Add the following lines (or some combination of lines following an accepted practice) to one's .gitignore file. Environment files with sensitive information should be avoided in GitHub, such as a *.env file. Other .env files, like .env.example, should be safe.
+.env
+.cnf
 
-We realize there is lots of ci/cd process missing just having a basic Python file that imports packages using the standard wM zip archive format. Most current wM ci/cd workflows use GitHub for managing the entire package in a standard webMethods formatted package file system layout, using an artifact application like Artifactory, and a ci/cd application like Jenkins.
+### Overview
+
+This package accesses one or more webMethods (wM) package archive zip files on the host integration server's local file system, the <webmethods_home>/replicate/inbound directory, and imports each file onto the target server. This is a more automated method of deploying or importing files, similar to using the wM Administrator ui.
+
+Most of the webMethods api detail for the main process was provided through a Safari Google search for help writing a Python process to interact with a webMethods integration server. We added argparse for some command-line arguments and environs for following a more standard practice of using a separate file for user accounts and passwords as well as some standard constants like the server name, port, and others.
+
+We realize there is lots of ci/cd process missing just having a basic Python file that imports packages using the standard wM zip archive format. Most current wM ci/cd workflows use GitHub for managing the entire package in a standard webMethods formatted package file system layout, using an artifact application like Artifactory, and a ci/cd application like Jenkins. This is more of a sample start on the entire process.
