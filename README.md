@@ -1,10 +1,12 @@
 ## Initial Readme File
 
-### Note
+### Note for This Project
 
-Add the following lines (or some combination of lines following an accepted practice) to one's .gitignore file. Environment files with sensitive information should be avoided in GitHub, such as a *.env file. Other .env files, like .env.example, should be safe.
-.env
-.cnf
+Add the following lines (or some combination of lines following your accepted practice) to the project's .gitignore file to avoid accidentally adding an environment variable file to GitHub. The .cnf suffix is not standard in Python, but is common in webMethods applications.
+
+*.cnf  
+.env  
+*.env  
 
 ### Overview
 
