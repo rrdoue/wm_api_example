@@ -1,0 +1,17 @@
+{
+  "folder_path": "/Applications/wMServiceDesigner/IntegrationServer/replicate/inbound",
+  "wm_import_files": [
+    {
+      "name": "Gne_HR_Sample.zip",
+      "type": "zip"
+    },
+    {
+      "name": "Gne_Practice.zip",
+      "type": "zip"
+    },
+    {
+      "name": "Gne_Process_CSV_File.zip",
+      "type": "zip"
+    }
+  ]
+}
