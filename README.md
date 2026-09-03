@@ -4,14 +4,18 @@
 
 Add the following lines (or some combination of lines following your accepted practice) to the project's .gitignore file to avoid accidentally adding an environment variable file to GitHub. The .cnf suffix is not standard in Python, but is common in webMethods applications.
 
-*.cnf  
+\*.cnf  
 .env  
-*.env  
+\*.env  
 
 ### Overview
 
-This package accesses one or more webMethods (wM) package archive zip files on the host integration server's local file system, the <webmethods_home>/replicate/inbound directory, and imports each file onto the target server. This is a more automated method of deploying or importing files, similar to using the wM Administrator ui.
+This package accesses one or more webMethods (wM) package archive zip files on the host integration server's local file system, the webmethods_home/replicate/inbound directory, and imports each file onto the target server. This is a more automated method of importing webMethods packages, similar to using the wM Administrator ui. This version specifically includes the Microservices Runtime (MSR) version of Integration Server. The input file, including its full path, is a json-formatted list of webMethods zip files. For now, the json-formatted file is a list of files with each file documented as a Python dictionary including the zip file name and a file-type description.
 
-Most of the webMethods api detail for the main process was provided through a Safari Google search for help writing a Python process to interact with a webMethods integration server. We added argparse for some command-line arguments and environs for following a more standard practice of using a separate file for user accounts and passwords as well as some standard constants like the server name, port, and others.
+Most of the webMethods api detail for the main process was provided through a Safari Google search for help writing a Python process to interact with a webMethods integration server, referencing version 12 documentation where available. We added argparse for processing command-line arguments and environs for following a more standard practice of using a separate file for user accounts and passwords as well as some standard constants like the server name, port, and others.
 
-We realize there is lots of ci/cd process missing just having a basic Python file that imports packages using the standard wM zip archive format. Most current wM ci/cd workflows use GitHub for managing the entire package in a standard webMethods formatted package file system layout, using an artifact application like Artifactory, and a ci/cd application like Jenkins. This is more of a sample start on the entire process.
+We realize there is lots of ci/cd process missing just having a basic Python file that imports packages using the standard wM zip archive format. Most current wM ci/cd workflows use GitHub for managing the entire package in a standard webMethods formatted package file system layout, using an artifact application like Artifactory, and a ci/cd application like Jenkins.
+
+Input: -i (--import_file) \*.json file, example file in the GitHub repository at documentation/design/file_formats/wm-import-files-metadata.json
+
+Output: Informational progress lines and a summary result, all to stdout
