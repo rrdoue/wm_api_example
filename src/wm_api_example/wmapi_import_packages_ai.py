@@ -74,14 +74,14 @@ def import_webmethods_package(
 
     IMPORT_URL = f"{protocol}://{integration_server}:{port}/pub.packages/installPackage"
     PARAMS = {
-        "packageFile": f"{package_name}",
+        "packageFile": f"{package_name["name"]}",
         "activateOnInstall": "yes",
         "archiveOnInstall": "yes",
     }
 
-    # package_name appears to be equivalent to a Python dictionary and elements can be called with the keys
+    # package_name is a converted Python dictionary where elements can be called with the keys
     # package_name is really a package file information structure like a dictionary, where 'name' is the package zip
-    #    file name including the file-type suffix
+    #    file name including the file-type suffix. Note the name value must be used above in the parameters.
     wmpackage, suffix = package_name["name"].split(".")
 
     # beautifulsoup4 allows one to retrieve the text response from response.text
