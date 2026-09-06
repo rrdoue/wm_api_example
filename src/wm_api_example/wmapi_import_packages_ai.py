@@ -72,12 +72,19 @@ def import_webmethods_package(
 
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    IMPORT_URL = f"{protocol}://{integration_server}:{port}/pub.packages/installPackage"
+    IMPORT_URL = f"{protocol}://{integration_server}:{port}/invoke/pub.packages/installPackage"
+
     PARAMS = {
         "packageFile": f"{package_name["name"]}",
         "activateOnInstall": "yes",
         "archiveOnInstall": "yes",
     }
+
+    HEADERS = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+
 
     # package_name is a converted Python dictionary where elements can be called with the keys
     # package_name is really a package file information structure like a dictionary, where 'name' is the package zip
@@ -88,13 +95,14 @@ def import_webmethods_package(
     # So integration server correctly returns a 404, Not Found error, and probably others as appropriate
 
     try:
-        response = session.post(IMPORT_URL, params=PARAMS, verify=False, timeout=60)
+        response = session.post(IMPORT_URL, params=PARAMS, headers=HEADERS, verify=False, timeout=60)
 
         if response.status_code == 200:
             response_text = BeautifulSoup(response.text, "html.parser")
             import_response_text = response_text.find("b").get_text()
 
             print(f"SUCCESS: {package_name['name']} was imported successfully.")
+            print(f"json response: {response.json()}")
 
             if not import_response_text:
                 import_response_text = (
@@ -103,17 +111,18 @@ def import_webmethods_package(
             return True, wmpackage, import_response_text
 
         else:
-            response_text = BeautifulSoup(response.text, "html.parser")
-            import_response_text = response_text.find("b").get_text()
+#            response_text = BeautifulSoup(response.text, "html.parser")
+#            import_response_text = response_text.find("b").get_text()
+            print(f"json response: {response.json()}")
             print(
-                f"(FAILED) Status {response.status_code} for {package_name['name']} import. Response: "
-                f"{import_response_text}."
+                f"(FAILED) Status code {response.status_code} for {package_name['name']} import."
+#                f"{ Response: import_response_text}."
             )
             return (
                 False,
                 wmpackage,
-                f"(FAILED) Status {response.status_code} for {package_name['name']} import. "
-                f"Response: {import_response_text}.",
+                f"(FAILED) Status code {response.status_code} for {package_name['name']} import. "
+#                f"Response: {import_response_text}.",
             )
 
     except requests.exceptions.RequestException as e:
