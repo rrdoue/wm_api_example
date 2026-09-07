@@ -3,8 +3,6 @@
 -e .
 backports-datetime-fromisoformat==2.0.3
     # via wm-api-example
-beautifulsoup4==4.15.0
-    # via wm-api-example
 certifi==2026.6.17
     # via
     #   requests
@@ -29,12 +27,8 @@ python-dotenv==1.2.2
     #   wm-api-example
 requests==2.34.2
     # via wm-api-example
-soupsieve==2.9.2
-    # via beautifulsoup4
 typing-extensions==4.16.0
-    # via
-    #   beautifulsoup4
-    #   wm-api-example
+    # via wm-api-example
 urllib3==2.7.0
     # via
     #   requests
