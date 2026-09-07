@@ -11,8 +11,8 @@ Output: Informational progress lines and a summary result, all to stdout
 import os
 import json
 import argparse
+import sys
 
-from bs4 import BeautifulSoup
 import requests
 import urllib3
 from environs import env
@@ -48,16 +48,16 @@ def integration_server_status(
             verify=ssl_verification,
         )
         if response.status_code == 200:
-            print(f"SUCCESS: The integration server {target_server} is up and healthy.")
+            print(f"\n(Success) The integration server, {target_server}, is up and passed all internal health checks.")
             return True
         elif response.status_code == 503:
             print(
-                f"WARNING: The integration server {target_server} responded, but a health indicator is DOWN."
+                f"(Warning) The integration server, {target_server}, responded with a Status Code {response.status_code}, indicating a health indicator is down. Please check the integration server and retry the operation."
             )
             return False
         return False
     except requests.exceptions.RequestException as e:
-        print(f"\nCONNECTION ERROR: Could not connect to {target_server}. Error: {e}\n")
+        print(f"\n(CONNECTION ERROR) Could not connect to {target_server}. Error: {e}\n")
         return False
 
 
@@ -91,38 +91,65 @@ def import_webmethods_package(
     #    file name including the file-type suffix. Note the name value must be used above in the parameters.
     wmpackage, suffix = package_name["name"].split(".")
 
-    # beautifulsoup4 allows one to retrieve the text response from response.text
-    # So integration server correctly returns a 404, Not Found error, and probably others as appropriate
+    error_payload = {}
+    success_payload = {}
+
+    # beautifulsoup4 allows one to retrieve the text response from response.text, but is not used if one converts the response to json
 
     try:
         response = session.post(IMPORT_URL, params=PARAMS, headers=HEADERS, verify=False, timeout=60)
 
         if response.status_code == 200:
-            response_text = BeautifulSoup(response.text, "html.parser")
-            import_response_text = response_text.find("b").get_text()
 
-            print(f"SUCCESS: {package_name['name']} was imported successfully.")
-            print(f"json response: {response.json()}")
+            success_payload = response.json()
+            success_response_text = (
+                f"Success: {package_name['name']} was imported successfully."
+            )
+            print(f"Status Code: {response.status_code}, Text: {success_response_text}")
+            if response.text:
+                print(f"Response Text: {response.text}")
+            print()
+            print("json Response Details:")  # the response is for now an unknown, print everything available
+            for key, value in success_payload.items():
+                print(f"{key}: {value}")
+            print()
+            print(success_payload)
 
-            if not import_response_text:
-                import_response_text = (
-                    f"SUCCESS: {package_name['name']} was imported successfully."
-                )
-            return True, wmpackage, import_response_text
+            return True, wmpackage, success_response_text
+
+        elif response.status_code > 200:
+            try:
+                error_payload = response.json()
+                # Safely pull the webMethods error string
+                wm_error = error_payload.get('$error','Unknown server error')
+                wm_error_message = error_payload.get('$errorMessage', 'Unknown server error message')
+                wm_error_type = error_payload.get('$errorType', 'Unknown server error type')
+
+                # This is more of a temporary debug statement, remove upon some experience with the process
+                print(f"Status Code: {response.status_code}")
+                print()
+                print(f"Status Code Detail: \n\tError Type: {wm_error_type}, \n\tError: {wm_error}, \n\tError Message: {wm_error_message}")
+                print()
+
+                return False, wmpackage, f"(FAILED) {wm_error}"
+
+            except ValueError:
+                # Fallback if integration server has severe problems and doesn't output JSON
+                print(f"(FAILED) Response was not json. Status: {response.status_code}")
+                print(response.text)
+                sys.exit(1)
 
         else:
-#            response_text = BeautifulSoup(response.text, "html.parser")
-#            import_response_text = response_text.find("b").get_text()
-            print(f"json response: {response.json()}")
             print(
                 f"(FAILED) Status code {response.status_code} for {package_name['name']} import."
-#                f"{ Response: import_response_text}."
             )
+            print()
+            for key, value in response.json().items():
+                print(f"{key}: {value}")
             return (
                 False,
                 wmpackage,
-                f"(FAILED) Status code {response.status_code} for {package_name['name']} import. "
-#                f"Response: {import_response_text}.",
+                f"(FAILED) Status code {response.status_code} for {package_name['name']} import."
             )
 
     except requests.exceptions.RequestException as e:
@@ -238,9 +265,9 @@ if __name__ == "__main__":
         ssl_certificate_verification,
     ):
         print(
-            "Aborting webMethods package pipeline import process, integration server health metrics failed.\n"
+            "(FAILED) Aborting the webMethods package import process, integration server health metrics failed.\n"
         )
-        exit(1)
+        sys.exit(1)
 
     # --- STEP 2: Scoped Loop Execution Management ---
     session = requests.Session()
@@ -248,7 +275,7 @@ if __name__ == "__main__":
     session.headers.update({"Accept": "application/json"})
 
     print(
-        f"\nStarting the webMethods package import process consisting of {len(packages_to_import)} packages using "
+        f"\nStarting the webMethods package import process consisting of {len(packages_to_import)} package(s) using "
         f"Python and the wM api ..."
     )
     for zip_file in packages_to_import:
@@ -265,8 +292,9 @@ if __name__ == "__main__":
                     session, integration_server, port, package, protocol
                 )
             )
+            # This is more of a temporary debug statement, remove upon some experience with the process
             print(
-                f"Import status: {is_imported}, {is_imported_package_name}, {import_text}\n"
+                f"Import status for {package["name"]}: {is_imported}, {is_imported_package_name}, {import_text}\n"
             )
             post_import_dict[is_imported_package_name] = import_text
 
@@ -306,3 +334,4 @@ if __name__ == "__main__":
 
     finally:
         session.close()
+        sys.exit(0)
