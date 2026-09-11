@@ -48,16 +48,16 @@ def integration_server_status(
             verify=ssl_verification,
         )
         if response.status_code == 200:
-            print(f"\n(Success) The integration server, {target_server}, is up and passed all internal health checks.")
+            print(f"\n(Success)  The integration server, {target_server}, is up and passed all internal health checks.")
             return True
         elif response.status_code == 503:
             print(
-                f"(Warning) The integration server, {target_server}, responded with a Status Code {response.status_code}, indicating a health indicator is down. Please check the integration server and retry the operation."
+                f"(Warning)  The integration server, {target_server}, responded with a Status Code {response.status_code}, indicating a health indicator is down. Please check the integration server and retry the operation."
             )
             return False
         return False
     except requests.exceptions.RequestException as e:
-        print(f"\n(CONNECTION ERROR) Could not connect to {target_server}. Error: {e}\n")
+        print(f"\n(CONNECTION ERROR)  Could not connect to {target_server}. Error: {e}\n")
         return False
 
 
@@ -85,16 +85,10 @@ def import_webmethods_package(
         "Accept": "application/json"
     }
 
-
-    # package_name is a converted Python dictionary where elements can be called with the keys
-    # package_name is really a package file information structure like a dictionary, where 'name' is the package zip
-    #    file name including the file-type suffix. Note the name value must be used above in the parameters.
-    wmpackage, suffix = package_name["name"].split(".")
+    wm_package, suffix = package_name["name"].split(".")
 
     error_payload = {}
     success_payload = {}
-
-    # beautifulsoup4 allows one to retrieve the text response from response.text, but is not used if one converts the response to json
 
     try:
         response = session.post(IMPORT_URL, params=PARAMS, headers=HEADERS, verify=False, timeout=60)
@@ -102,62 +96,56 @@ def import_webmethods_package(
         if response.status_code == 200:
 
             success_payload = response.json()
-            success_response_text = (
-                f"Success: {package_name['name']} was imported successfully."
-            )
-            print(f"Status Code: {response.status_code}, Text: {success_response_text}")
-            if response.text:
-                print(f"Response Text: {response.text}")
-            print()
-            print("json Response Details:")  # the response is for now an unknown, print everything available
-            for key, value in success_payload.items():
-                print(f"{key}: {value}")
-            print()
-            print(success_payload)
 
-            return True, wmpackage, success_response_text
+            wm_package_archive_file_name = success_payload.get('packageFile', 'No package archive file returned')
+            wm_success_message = success_payload.get('message', 'No import results returned')
+
+            print()
+            print(f"(Import Successful)  {wm_success_message}")
+            print()
+
+            return True, wm_package_archive_file_name, wm_success_message
 
         elif response.status_code > 200:
             try:
                 error_payload = response.json()
-                # Safely pull the webMethods error string
-                wm_error = error_payload.get('$error','Unknown server error')
-                wm_error_message = error_payload.get('$errorMessage', 'Unknown server error message')
-                wm_error_type = error_payload.get('$errorType', 'Unknown server error type')
+
+                wm_error = error_payload.get('$error', 'No server error returned')
+                wm_error_message = error_payload.get('$errorMessage', 'No error message returned')
+                wm_error_type = error_payload.get('$errorType', 'No server error type returned')
 
                 # This is more of a temporary debug statement, remove upon some experience with the process
-                print(f"Status Code: {response.status_code}")
                 print()
-                print(f"Status Code Detail: \n\tError Type: {wm_error_type}, \n\tError: {wm_error}, \n\tError Message: {wm_error_message}")
+                print(f"(Import FAILED)  Status Code: {response.status_code}  On attempting the import, received {wm_error}.")
                 print()
 
-                return False, wmpackage, f"(FAILED) {wm_error}"
+                return False, wm_package, f"(FAILED) {wm_error}"
 
             except ValueError:
                 # Fallback if integration server has severe problems and doesn't output JSON
-                print(f"(FAILED) Response was not json. Status: {response.status_code}")
+                print(f"(Import FAILED)  Response was not json. Status: {response.status_code}")
                 print(response.text)
                 sys.exit(1)
 
         else:
             print(
-                f"(FAILED) Status code {response.status_code} for {package_name['name']} import."
+                f"(Import FAILED)  Status code {response.status_code} for {package_name['name']} import."
             )
             print()
             for key, value in response.json().items():
                 print(f"{key}: {value}")
             return (
                 False,
-                wmpackage,
-                f"(FAILED) Status code {response.status_code} for {package_name['name']} import."
+                wm_package,
+                f"(FAILED)  Status code {response.status_code} for {package_name['name']} import."
             )
 
     except requests.exceptions.RequestException as e:
-        print(f"(ERROR) http import request failed for {package_name['name']}: {e}")
+        print(f"(ERROR)  http import request failed for {package_name['name']}: {e}")
         return (
             False,
-            wmpackage,
-            f"(ERROR) http import request failed for {package_name['name']}: {e}",
+            wm_package,
+            f"(ERROR)  http import request failed for {package_name['name']}: {e}",
         )
 
 
@@ -175,12 +163,9 @@ def verify_package_import(session, integration_server, port, package_name, proto
     # noinspection PyUnusedLocal
     is_wmpackage_enabled: dict = {}
     # noinspection PyUnusedLocal
-    wmpackage = None
+    wm_package_name = None
 
-    # package_name appears to be equivalent to a Python dictionary and elements can be called with the keys
-    # package_name is really a package file information structure like a dictionary, where 'name' is the package zip
-    #    file name including the file-type suffix
-    wmpackage, suffix = package_name["name"].split(".")
+    wm_package_name, suffix = package_name["name"].split(".")
 
     try:
         response = session.get(VERIFICATION_URL, verify=False, timeout=60)
@@ -194,26 +179,29 @@ def verify_package_import(session, integration_server, port, package_name, proto
                 for wm_package in wm_packages_dict["packages"]
             }
 
-            if is_wmpackage_enabled.get(wmpackage) == "true":
-                print(f"Verification Successful: {wmpackage} is Active and Enabled.")
+            if is_wmpackage_enabled.get(wm_package_name) == "true":
+                print(f"(Verification Successful)  {wm_package_name} is Active and Enabled.")
+                print()
                 return (
                     True,
-                    wmpackage,
-                    f"(Verification Successful) {wmpackage} is Active and Enabled.",
+                    wm_package_name,
+                    f"(Verification Successful)  {wm_package_name} is Active and Enabled.",
                 )
-            elif is_wmpackage_enabled.get(wmpackage) == "false":
-                print(f"Warning: {wmpackage} is INACTIVE or DISABLED.")
+            elif is_wmpackage_enabled.get(wm_package_name) == "false":
+                print(f"(Verification Warning)  {wm_package_name} is INACTIVE or DISABLED.")
+                print()
                 return (
                     False,
-                    wmpackage,
-                    f"(Warning) {wmpackage} is INACTIVE or DISABLED.",
+                    wm_package_name,
+                    f"(Verification Warning)  {wm_package_name} is INACTIVE or DISABLED.",
                 )
             else:
-                print(f"Warning: {wmpackage} not found.")
-                return False, wmpackage, f"(Warning) {wmpackage} not found."
+                print(f"(Verification Warning)  {wm_package_name} not found.")
+                print()
+                return False, wm_package_name, f"(Warning)  {wm_package_name} not found."
     except Exception as e:
         print(
-            f"Failed to run package verification for {package_name}: Status Code: response.status_code. \n"
+            f"Failed to run package verification for {wm_package_name}: Status Code: response.status_code. \n"
             f"Error: {e}"
         )
         return False
@@ -265,7 +253,7 @@ if __name__ == "__main__":
         ssl_certificate_verification,
     ):
         print(
-            "(FAILED) Aborting the webMethods package import process, integration server health metrics failed.\n"
+            "(FAILED)  Aborting the webMethods package import process, the integration server health check failed.\n"
         )
         sys.exit(1)
 
@@ -292,13 +280,10 @@ if __name__ == "__main__":
                     session, integration_server, port, package, protocol
                 )
             )
-            # This is more of a temporary debug statement, remove upon some experience with the process
-            print(
-                f"Import status for {package["name"]}: {is_imported}, {is_imported_package_name}, {import_text}\n"
-            )
+
             post_import_dict[is_imported_package_name] = import_text
 
-            # Action B: Execute verification if the import was successful
+            # Action B: Execute package verification if the import was successful
             if is_imported:
                 verification_status, package_name, verification_text = (
                     verify_package_import(
