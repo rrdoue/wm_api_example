@@ -8,9 +8,10 @@ Input: -i (--import_file) *.json file, example file in the GitHub repository at 
 Output: Informational progress lines and a summary result, all to stdout
 """
 
-import os
-import json
 import argparse
+import grammlog
+import json
+import os
 import sys
 
 import requests
@@ -25,7 +26,7 @@ from requests.auth import HTTPBasicAuth
 
 
 def integration_server_status(
-    target_server, port, auth_user, auth_passwd, protocol, ssl_verification=False
+        target_server, port, auth_user, auth_passwd, protocol, logger, ssl_verification
 ):
     """
     Checks the independent webMethods Microservices Runtime (MSR) /health endpoint. Returns True if 200, else False. The original version had lots of explanatory error checks, but this one is a simplified version. The health uri has lots of options for checking different aspects of the integration server MSR. This is a simplified first implementation. In more controlled environments, where we are accustomed to suspending processing and disabling jdbc adapters and other functionality during a deployment, this version will most likely return a False response, ending the operation with no action taken.
@@ -49,20 +50,38 @@ def integration_server_status(
         )
         if response.status_code == 200:
             print(f"\n(Success)  The integration server, {target_server}, is up and passed all internal health checks.")
+
+            grammlog.info(
+                logger,
+                msg=f"The integration server, {target_server}, is up and passed all internal health checks."
+            )
+
             return True
         elif response.status_code == 503:
             print(
-                f"(Warning)  The integration server, {target_server}, responded with a Status Code {response.status_code}, indicating a health indicator is down. Please check the integration server and retry the operation."
+                f"The integration server, {target_server}, responded with a Status Code {response.status_code}, indicating one or  more health indicator down. Please check the integration server and retry the operation."
             )
+
+            grammlog.warning(
+                logger,
+                msg=f"The integration server, {target_server}, responded with a Status Code {response.status_code}, indicating one or  more health indicator down. Please check the integration server and retry the operation."
+            )
+
             return False
         return False
     except requests.exceptions.RequestException as e:
         print(f"\n(CONNECTION ERROR)  Could not connect to {target_server}. Error: {e}\n")
+
+        grammlog.error(
+            logger,
+            msg=f"Could not connect to {target_server}. Error: {e}."
+        )
+
         return False
 
 
 def import_webmethods_package(
-    session, integration_server, port, package_name, protocol
+        session, integration_server, port, package_name, protocol
 ):
     """
     Executes the webMethods import functionality for a single package. The package name passed around is really a package file information structure that resembles  a dictionary, where 'name' is the package zip file name, including the zip suffix. From all information, calling the url returns a http 200 status code, but not yet sure whether there is a response.text. It might be wise to write the function so it tries to return any text. Unsuccessful responses throw status codes consistent with ietf standards.
@@ -75,7 +94,7 @@ def import_webmethods_package(
     IMPORT_URL = f"{protocol}://{integration_server}:{port}/invoke/pub.packages/installPackage"
 
     PARAMS = {
-        "packageFile": f"{package_name["name"]}",
+        "packageFile": f"{package_name['name']}",
         "activateOnInstall": "yes",
         "archiveOnInstall": "yes",
     }
@@ -104,6 +123,11 @@ def import_webmethods_package(
             print(f"(Import Successful)  {wm_success_message}")
             print()
 
+            grammlog.info(
+                logger,
+                msg=f"{wm_success_message}"
+            )
+
             return True, wm_package_archive_file_name, wm_success_message
 
         elif response.status_code > 200:
@@ -116,21 +140,39 @@ def import_webmethods_package(
 
                 # This is more of a temporary debug statement, remove upon some experience with the process
                 print()
-                print(f"(Import FAILED)  Status Code: {response.status_code}  On attempting the import, received {wm_error}.")
+                print(
+                    f"(Import FAILED)  Status Code: {response.status_code}  On attempting the import, received {wm_error}.")
                 print()
+
+                grammlog.error(
+                    logger,
+                    msg=f"Import failed. On attempting the import, received {wm_error}."
+                )
 
                 return False, wm_package, f"(FAILED) {wm_error}"
 
-            except ValueError:
-                # Fallback if integration server has severe problems and doesn't output JSON
-                print(f"(Import FAILED)  Response was not json. Status: {response.status_code}")
+            except (ValueError, json.JSONDecodeError) as e:
+                # Fallback if integration server returns mal-formed JSON
+                print(f"(Import Warning)  Status: {response.status_code}. Response was not json. Error: {e}")
                 print(response.text)
+
+                grammlog.warning(
+                    logger,
+                    msg=f"Mal-formed json value error, Error: {e}."
+                )
+
                 sys.exit(1)
 
         else:
             print(
                 f"(Import FAILED)  Status code {response.status_code} for {package_name['name']} import."
             )
+
+            grammlog.error(
+                logger,
+                msg=f"Import problem due to unknown error, Status code {response.status_code} for {package_name['name']} import."
+            )
+
             print()
             for key, value in response.json().items():
                 print(f"{key}: {value}")
@@ -142,6 +184,12 @@ def import_webmethods_package(
 
     except requests.exceptions.RequestException as e:
         print(f"(ERROR)  http import request failed for {package_name['name']}: {e}")
+
+        grammlog.error(
+            logger,
+            msg=f"http import request failed for {package_name['name']}: {e}."
+        )
+
         return (
             False,
             wm_package,
@@ -149,7 +197,7 @@ def import_webmethods_package(
         )
 
 
-def verify_package_import(session, integration_server, port, package_name, protocol):
+def verify_package_import(session, integration_server, port, package_name, protocol, logger):
     """
     This function accepts a webMethods zip file package name and verifies whether the package is active on the integration server. Called after the import package function, we expect the package to be in an Enabled state.
     Input: package_name, for example, Gne_NonValUtils.zip. However, it is not in a simple form usually provided to  the integration server. Note this was a result of the json file implementation read by the overall process. Other inputs include http session and other associated url parameters.
@@ -182,6 +230,12 @@ def verify_package_import(session, integration_server, port, package_name, proto
             if is_wmpackage_enabled.get(wm_package_name) == "true":
                 print(f"(Verification Successful)  {wm_package_name} is Active and Enabled.")
                 print()
+
+                grammlog.info(
+                    logger,
+                    msg=f"Package {wm_package_name} is Active and Enabled.."
+                )
+
                 return (
                     True,
                     wm_package_name,
@@ -190,6 +244,12 @@ def verify_package_import(session, integration_server, port, package_name, proto
             elif is_wmpackage_enabled.get(wm_package_name) == "false":
                 print(f"(Verification Warning)  {wm_package_name} is INACTIVE or DISABLED.")
                 print()
+
+                grammlog.warning(
+                    logger,
+                    msg=f"Package {wm_package_name} is INACTIVE or DISABLED.."
+                )
+
                 return (
                     False,
                     wm_package_name,
@@ -198,12 +258,25 @@ def verify_package_import(session, integration_server, port, package_name, proto
             else:
                 print(f"(Verification Warning)  {wm_package_name} not found.")
                 print()
+
+                grammlog.warning(
+                    logger,
+                    msg=f"Failed to run verification for {wm_package_name}, package not found.",
+                )
+
                 return False, wm_package_name, f"(Warning)  {wm_package_name} not found."
     except Exception as e:
         print(
             f"Failed to run package verification for {wm_package_name}: Status Code: response.status_code. \n"
             f"Error: {e}"
         )
+
+        grammlog.error(
+            logger,
+            msg=f"Failed to run package verification for {wm_package_name}: Status Code: {response.status_code}.",
+            err=e,
+        )
+
         return False
 
 
@@ -219,6 +292,7 @@ if __name__ == "__main__":
     post_import_dict = {}
     post_verification_dict: dict = {}
     summary_dict: dict = {}
+    logger_import_file_string: str = ""
 
     # Configuration setup environment parsers
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -231,30 +305,61 @@ if __name__ == "__main__":
     port = env.int("PORT", default=5543)
     integration_server = env.str("INTEGRATION_SERVER")
     ssl_certificate_verification = env.bool("VERIFY_SSL_CERTIFICATE", default=True)
+    app_log_directory = env.str("APP_LOG_DIRECTORY")
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--import_file", nargs="?", const="")
+    parser = argparse.ArgumentParser(description="webMethods api import automation script")
+    parser.add_argument("-i", "--import_file", required=True, help="Name of the file containing the files to be imported. Note the archive zip files must be located in the replicate/inbound directory.")
+    parser.add_argument("-l", "--log_directory", help="Log directory location, where if no directory is provided, the process uses the APP_LOG_DIRECTORY value in the <project_home>/conf/wm_api_example.cnf file.")
+
     args = parser.parse_args()
+
+    logger = grammlog.make_logger("wm_api_import", log_dir=app_log_directory, log_level=grammlog.Level.INFO)
 
     if not args.import_file:
         print("You did not provide a JSON-formatted import manifest file, exiting.")
+        grammlog.error(
+            logger,
+            msg="No JSON-formatted import manifest file provided, exiting.",
+        )
         exit(1)
 
     with open(args.import_file, "r", encoding="utf-8") as f:
         packages_to_import = json.load(f)["wm_import_files"]
 
-    # --- STEP 1: Standalone Server Pre-Flight Check ---
+    print(
+        f"\nStarting the webMethods package import process for {len(packages_to_import)} package(s) using "
+        f"Python and the wM api ..."
+    )
+
+    grammlog.info(
+        logger,
+        msg=f"Starting the webMethods package import process for {len(packages_to_import)} package(s).",
+    )
+
+    # --- STEP 1: Standalone integration server pre-import check ---
     if not integration_server_status(
-        integration_server,
-        port,
-        auth_user,
-        auth_passwd,
-        protocol,
-        ssl_certificate_verification,
+            integration_server,
+            port,
+            auth_user,
+            auth_passwd,
+            protocol,
+            logger,
+            ssl_certificate_verification,
     ):
         print(
             "(FAILED)  Aborting the webMethods package import process, the integration server health check failed.\n"
         )
+
+        grammlog.error(
+            logger,
+            msg="The integration server health check failed.",
+        )
+
+        grammlog.info(
+            logger,
+            msg="Ending the webMethods package import process prematurely.",
+        )
+
         sys.exit(1)
 
     # --- STEP 2: Scoped Loop Execution Management ---
@@ -262,13 +367,15 @@ if __name__ == "__main__":
     session.auth = HTTPBasicAuth(auth_user, auth_passwd)
     session.headers.update({"Accept": "application/json"})
 
-    print(
-        f"\nStarting the webMethods package import process consisting of {len(packages_to_import)} package(s) using "
-        f"Python and the wM api ..."
-    )
     for zip_file in packages_to_import:
         print(zip_file["name"])
+        logger_import_file_string += f"{zip_file['name']}, "
     print()
+
+    grammlog.info(
+        logger,
+        msg=f"Importing {logger_import_file_string.rstrip(' ,')}."
+    )
 
     try:
         for package in packages_to_import:
@@ -287,7 +394,7 @@ if __name__ == "__main__":
             if is_imported:
                 verification_status, package_name, verification_text = (
                     verify_package_import(
-                        session, integration_server, port, package, protocol
+                        session, integration_server, port, package, protocol, logger
                     )
                 )
                 post_verification_dict[package_name] = verification_text
@@ -299,15 +406,30 @@ if __name__ == "__main__":
                 "\nThere were problems with the import process, no import results were returned.\n"
             )
 
+            grammlog.warning(
+                logger,
+                msg=f"The import process ran to completion, but one or more packages were not verified."
+            )
+
         elif len(post_verification_dict) < len(packages_to_import):
             print(
                 "\nThe import process ran to completion, but one or more packages were not verified. Please check the"
                 " stdout results and review the following for summary results:\n"
             )
 
+            grammlog.warning(
+                logger,
+                msg=f"The import process ran to completion, but one or more packages were not verified."
+            )
+
         else:
             print(
                 "\nAll pipeline tasks ran to completion. Please review the following for summary results:\n"
+            )
+
+            grammlog.info(
+                logger,
+                msg=f"All pipeline tasks ran to completion."
             )
 
         for key, value in post_import_dict.items():
@@ -318,5 +440,9 @@ if __name__ == "__main__":
         print()
 
     finally:
+        grammlog.info(
+            logger,
+            msg=f"Ending the webMethods package import process."
+        )
         session.close()
         sys.exit(0)

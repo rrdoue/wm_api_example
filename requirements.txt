@@ -13,6 +13,8 @@ charset-normalizer==3.4.9
     #   wm-api-example
 environs==15.0.1
     # via wm-api-example
+grammlog==1.4.1
+    # via wm-api-example
 idna==3.18
     # via
     #   requests
