@@ -1,0 +1,28 @@
+# Sample .env file for environmental variables, usually constants.
+# Note this is not a standard naming convention for environmental variable files in 
+#   Python.
+# Note also the location of this file is also not a standard convention.
+# Note the real password is in 1password :)
+
+APP_LOG_DIRECTORY=/Users/rrdoue/Documents/applications/webmethods/wm_api_example/logs
+# Add the authenticated and authorized user for integration server web-based access. The 
+#   user is a member of the Administrators group.
+AUTH_USER=webmethods_user
+# Add the user's credentials
+AUTH_PASSWD=password123
+# Debug should be a boolean value, for example, True or False
+DEBUG=True
+# Set the import directory for the webMethods zip files. The script will look for the 
+#   zip archive files in the import source, which can be a different location than the 
+#   inbound directory.
+IMPORT_SOURCE=/Applications/wMServiceDesigner/IntegrationServer/replicate/inbound
+INBOUND_DIRECTORY=/Applications/wMServiceDesigner/IntegrationServer/replicate/inbound
+# http protocol
+PROTOCOL=https
+# http port
+PORT=5543
+INTEGRATION_SERVER=rogers-mcp
+# Fail integration server status check on expired SSL certificate. Setting this to False 
+#   will generate a warning from the urllib3 module.  Setting this to True will cause the 
+#   status check to exit.
+VERIFY_SSL_CERTIFICATE=False
