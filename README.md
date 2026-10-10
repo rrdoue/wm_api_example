@@ -30,7 +30,7 @@ Where one can find the following download url:
 
 => [Download IBM webMethods Service Designer](https://www.ibm.com/resources/mrs/assets/DownloadList?source=WMS_Designer_v1213&lang=en_US#lang=en_US)
 
-See [about_webMethods](./z_non-python_resources/webmethods/about_webMethods.md) for suggestions about installing and configuring Integration Server and working with webMethods packages.
+See [about_webMethods](https://github.com/rrdoue/fastapi_exp/blob/main/z_non-python_resources/webmethods/about_webMethods.md) for suggestions about installing and configuring Integration Server and working with webMethods packages.
 
 ### Note for This Project
 
