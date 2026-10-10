@@ -1,11 +1,13 @@
 #! /usr/bin/env python3
+#! /usr/bin/env uv run  # available for uv-hosted projects 
 
 """
-This script accesses one or more wM archive zip files, for now located in the traditional <webmethods_home>/IntegrationServer/replicate/inbound directory on the host integration server's local filesystem. The input file, including its full path, is a json-formatted list of webMethods zip files. For now, the json-formatted file is a list of files documented as a Python dictionary including the zip file name and a file-type description. 
-Most of the webMethods api detail for the main process was provided through a Safari Google search for help writing a Python process to interact with a webMethods integration server, primarily for this exact process, to import packages following some kind of more automated process than using the standard wM Administrator ui. We added the use of argparse for some command-line arguments and environs for following a more standard practice of using a separate file for the more serious user accounts and passwords as well as some standard constants like the server name, port, and others.
-We realize there is lots of ci/cd process missing just having a basic Python file that imports packages using the standard wM zip format. Most current wM ci/cd workflows use GitHub for managing the entire package in a standard package file system layout, an artifact application like Artifactory, and a ci/cd application like Jenkins.
-Input: -i (--import_file) *.json file, example file in the GitHub repository at documentation/design/file_formats/wm-import-files-metadata.json
-Output: Informational progress lines and a summary result, all to stdout
+This script accesses one or more webMethods (wM) archive zip files located in the traditional <webmethods_home>/IntegrationServer/replicate/inbound directory on the host integration server's local filesystem, then imports the package into the integration server. The input file is a json-formatted list of webMethods zip files. A sample file is located in the GitHub project repository.
+The import process automates the standard wM Administrator ui import functionality. We added argparse for command-line arguments and environs for following a more standard practice of using a separate file for the more serious user accounts and passwords as well as some standard constants like the server name, port, and others.
+Input:
+-i (--import_file) *.json file, example file in the GitHub repository at <project_home>/documentation/design/file_formats/wm-import-files-metadata.json
+-l (--log_directory) Log directory location, where if no directory is provided, the process uses the APP_LOG_DIRECTORY value in the <project_home>/src/wm_api_example/conf/wm_api_example.cnf file.
+Output: Informational progress lines printed to stdout and written to the log file. A summary result is also included in stdout.
 """
 
 import argparse
@@ -331,6 +333,11 @@ if __name__ == "__main__":
         f"Python and the wM api ..."
     )
 
+    for zip_file in packages_to_import:
+        print(zip_file["name"])
+        logger_import_file_string += f"{zip_file['name']}, "
+    # print()
+
     grammlog.info(
         logger,
         msg=f"Starting the webMethods package import process for {len(packages_to_import)} package(s).",
@@ -366,11 +373,6 @@ if __name__ == "__main__":
     session = requests.Session()
     session.auth = HTTPBasicAuth(auth_user, auth_passwd)
     session.headers.update({"Accept": "application/json"})
-
-    for zip_file in packages_to_import:
-        print(zip_file["name"])
-        logger_import_file_string += f"{zip_file['name']}, "
-    print()
 
     grammlog.info(
         logger,
